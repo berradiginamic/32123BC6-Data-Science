@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 from scipy.stats import stats
 from sklearn.preprocessing import LabelEncoder
 
-
 def main():
     """
     Fonction principale pour la page de conseils de nettoyage des données.
@@ -16,14 +15,16 @@ def main():
     st.write("Cette page fournit des suggestions de nettoyage des données basées sur votre ensemble de données.")
 
     # Vérifier si le dataframe est disponible dans l'état de session
-    if 'dataframe' in st.session_state and st.session_state['dataframe'] is not None:
-        df = st.session_state['dataframe']
+    if 'final_dataframe' in st.session_state and st.session_state['final_dataframe'] is not None:
+        df = st.session_state['final_dataframe']
 
         st.header("Suggestions de Nettoyage des Données")
 
         # 1. Analyse de Corrélation
         st.subheader("Analyse de Corrélation")
-        corr = df.corr()
+        # Exclure les colonnes non numériques pour la corrélation
+        df_numeric = df.select_dtypes(include=['number'])
+        corr = df_numeric.corr()
         fig, ax = plt.subplots(figsize=(10, 8))  # Créer une figure et un axe
         sns.heatmap(corr, annot=True, cmap='coolwarm', vmin=-1, vmax=1, ax=ax)
         ax.set_title("Carte de Chaleur de Corrélation")
@@ -91,7 +92,6 @@ def main():
 
     else:
         st.write("Aucune donnée disponible. Veuillez télécharger ou vous connecter à une source de données sur la page de Connexion aux Données.")
-
 
 if __name__ == "__main__":
     main()

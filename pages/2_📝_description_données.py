@@ -11,8 +11,8 @@ def main():
     st.title("Page de Description des Données")
     st.write("Ceci est la page de description des données.")
 
-    if 'dataframe' in st.session_state:
-        df = st.session_state['dataframe']
+    if 'final_dataframe' in st.session_state:
+        df = st.session_state['final_dataframe']
 
         # Afficher les statistiques descriptives de base
         st.header("Statistiques descriptives")

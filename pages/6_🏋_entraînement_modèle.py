@@ -7,18 +7,59 @@ from sklearn.svm import SVC
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, r2_score
+import pandas as pd
+import numpy as np
 import uuid
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 
 def fetch_data():
     """
     Fonction pour récupérer les données depuis l'état de session.
-    Retourne le dataframe stocké dans st.session_state['dataframe'] ou affiche un avertissement s'il n'est pas trouvé.
+    Retourne le dataframe stocké dans st.session_state['final_dataframe'] ou affiche un avertissement s'il n'est pas trouvé.
     """
-    if 'dataframe' in st.session_state:
-        return st.session_state['dataframe']
+    if 'final_dataframe' in st.session_state:
+        return st.session_state['final_dataframe']
     else:
         st.warning("Aucun dataframe trouvé dans l'état de session.")
         return None
+
+
+def preprocess_data(df, selected_features, target_column):
+    """
+    Prétraitement des données : gestion des valeurs manquantes et transformation des colonnes catégorielles.
+    """
+    # Afficher les colonnes du DataFrame pour diagnostic
+    st.write("Colonnes du DataFrame:", df.columns.tolist())
+
+    # Gestion des valeurs manquantes
+    df = df[selected_features + [target_column]].copy()
+    df.fillna(df.mean(numeric_only=True), inplace=True)
+
+    # Encodage des variables catégorielles
+    df_encoded = pd.get_dummies(df, columns=df.select_dtypes(include=['object']).columns, drop_first=True)
+
+    # Afficher les colonnes après encodage
+    st.write("Colonnes après encodage:", df_encoded.columns.tolist())
+
+    # Mise à jour des features sélectionnés après encodage
+    selected_features_encoded = [col for col in selected_features if col in df_encoded.columns]
+
+    # Vérifier les colonnes après encodage
+    missing_features = [col for col in selected_features if col not in df_encoded.columns]
+    if missing_features:
+        st.warning(f"Les colonnes sélectionnées après encodage sont manquantes : {missing_features}")
+
+    # Séparation des caractéristiques et de la cible
+    X = df_encoded[selected_features_encoded]
+    y = df_encoded[target_column]
+
+    return X, y
+
+
 
 def main():
     """
@@ -119,74 +160,46 @@ def main():
                 st.warning("Veuillez sélectionner une colonne cible.")
                 return
 
-            # Séparation des données en caractéristiques et cible
-            X = df[selected_features]
-            y = df[target_column]
+            # Prétraiter les données
+            X, y = preprocess_data(df, selected_features, target_column)
 
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
-
-            model.fit(X_train, y_train)
-            y_pred = model.predict(X_test)
+            model.fit(X, y)
+            y_pred = model.predict(X)
 
             if isinstance(model, LinearRegression):
-                score = r2_score(y_test, y_pred)
+                score = r2_score(y, y_pred)
                 st.write(f"Score R²: {score:.2f}")
                 st.write("""
                 **Interprétation**: Le score R² mesure à quel point le modèle de régression linéaire s'adapte aux données.
                 Une valeur de R² plus élevée (proche de 1.0) indique que le modèle explique une plus grande proportion de la variance de la variable cible.
                 """)
             elif isinstance(model, (LogisticRegression, DecisionTreeClassifier, RandomForestClassifier)):
-                accuracy = accuracy_score(y_test, y_pred)
+                accuracy = accuracy_score(y, y_pred)
                 st.write(f"Précision: {accuracy:.2f}")
                 st.write("""
                 **Interprétation**: La précision mesure le pourcentage d'instances correctement prédites parmi toutes les instances.
                 Elle indique à quel point le modèle peut classer ou prédire les résultats en fonction des caractéristiques d'entrée.
                 """)
             elif isinstance(model, SVC):
-                accuracy = accuracy_score(y_test, y_pred)
+                accuracy = accuracy_score(y, y_pred)
                 st.write(f"Précision: {accuracy:.2f}")
                 st.write("""
                 **Interprétation**: La précision mesure le pourcentage d'instances correctement classées parmi toutes les instances.
                 Elle évalue la capacité du modèle à distinguer entre différentes classes en utilisant la fonction de noyau choisie et le paramètre de régularisation.
                 """)
             elif isinstance(model, GaussianNB):
-                accuracy = accuracy_score(y_test, y_pred)
+                accuracy = accuracy_score(y, y_pred)
                 st.write(f"Précision: {accuracy:.2f}")
                 st.write("""
-                **Interprétation**: La précision mesure le pourcentage d'instances correctement classées parmi toutes les instances.
-                Naive Bayes suppose que les caractéristiques sont conditionnellement indépendantes, ce qui le rend adapté à la classification de texte ou lorsque les caractéristiques sont relativement indépendantes.
+                **Interprétation**: La précision mesure le pourcentage d'instances correctement classées par le classificateur Naive Bayes.
+                Ce modèle est basé sur l'hypothèse d'indépendance entre les caractéristiques et peut être particulièrement efficace avec des données de grande dimension.
                 """)
 
-            # Générer un identifiant unique pour le modèle
-            model_id = str(uuid.uuid4())
-
-            # Stocker le modèle entraîné dans l'état de session
-            trained_models[model_id] = model
-
-            # Exporter le modèle entraîné
-            st.write(f"Exporter le Modèle Entraîné (ID: {model_id}):")
-            filename = f"modele_entraine_{model_name}_{model_id}.pkl"
-            st.markdown(f"Télécharger le modèle [ici](./{filename})")
+            # Sauvegarde du modèle
+            filename = f"{model_name}_model.pkl"
             with open(filename, 'wb') as file:
                 pickle.dump(model, file)
-
-            # Mettre à jour l'état de session avec trained_models
-            st.session_state['trained_models'] = trained_models
-
-        st.header("Téléchargement des Modèles Entraînés")
-
-        # Afficher les boutons de téléchargement pour chaque modèle entraîné
-        for model_id, model in trained_models.items():
-            filename = f"modele_entraine_{model_name}_{model_id}.pkl"
-            st.download_button(
-                label=f"Télécharger le Modèle {model_id}",
-                data=pickle.dumps(model),
-                file_name=filename,
-                mime="application/octet-stream"
-            )
-
-    else:
-        st.warning("Aucun dataframe trouvé dans l'état de session. Veuillez d'abord charger ou connecter les données.")
+            st.write(f"Modèle entraîné et sauvegardé sous {filename}")
 
 if __name__ == "__main__":
     main()

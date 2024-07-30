@@ -9,8 +9,8 @@ def main():
     st.write("Ceci est la page de visualisation des données.")
 
     # Vérifier si le dataframe est disponible dans l'état de session
-    if 'dataframe' in st.session_state and st.session_state['dataframe'] is not None:
-        df = st.session_state['dataframe']
+    if 'final_dataframe' in st.session_state and st.session_state['final_dataframe'] is not None:
+        df = st.session_state['final_dataframe']
 
         st.header("Sélection des Options de Visualisation")
 
@@ -71,11 +71,15 @@ def main():
 
         if "Carte de Chaleur de Corrélation" in plot_types:
             st.header("Carte de Chaleur de Corrélation")
-            fig, ax = plt.subplots(figsize=(10, 8))
-            corr = df.corr()
-            sns.heatmap(corr, annot=True, cmap='coolwarm', vmin=-1, vmax=1, ax=ax)
-            ax.set_title("Carte de Chaleur de Corrélation")
-            st.pyplot(fig)
+            numeric_columns = df.select_dtypes(include=['number']).columns
+            if len(numeric_columns) > 1:
+                fig, ax = plt.subplots(figsize=(10, 8))
+                corr = df[numeric_columns].corr()
+                sns.heatmap(corr, annot=True, cmap='coolwarm', vmin=-1, vmax=1, ax=ax)
+                ax.set_title("Carte de Chaleur de Corrélation")
+                st.pyplot(fig)
+            else:
+                st.warning("Il n'y a pas assez de colonnes numériques pour générer une carte de chaleur de corrélation.")
 
     else:
         st.write("Aucune donnée disponible. Veuillez télécharger ou vous connecter à une source de données sur la page de Connexion aux Données.")

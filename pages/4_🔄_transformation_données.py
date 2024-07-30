@@ -40,7 +40,10 @@ def main():
         elif missing_data_method == "Remplir avec une Valeur Spécifique":
             fill_value = st.text_input("Entrer la valeur pour remplir les données manquantes")
             if fill_value:
-                df = df.fillna(fill_value)
+                try:
+                    df = df.fillna(float(fill_value))
+                except ValueError:
+                    st.error("Veuillez entrer une valeur numérique valide.")
 
         st.dataframe(df)
 
