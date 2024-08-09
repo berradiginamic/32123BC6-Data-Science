@@ -1,29 +1,14 @@
 import streamlit as st
+from pages import visualisation_donnees, suggestions, prevision
 
-
-def main():
-    """
-    Fonction principale pour afficher une application Streamlit avec un style personnalisé et du contenu.
-
-    Cette fonction affiche un logo, une bannière, un titre principal, un sous-titre, et une section décrivant
-    les fonctionnalités de l'application en utilisant des icônes et du balisage HTML.
-
-    Utilisation :
-        - Assurez-vous que 'assets/images/banner.jpg' existe dans votre structure de projet.
-        - Exécutez l'application Streamlit avec streamlit run my_app.py.
-
-    Exemple :
-        >>> main()
-    """
+def show_homepage():
     # Affichage du logo
-    st.logo("assets/images/logo.png", icon_image="assets/images/logo.png")
+    st.image("assets/images/logo.png", width=150)
 
     # Affichage de la bannière
     st.image("assets/images/banner.jpg", use_column_width=True)
 
-
     # Titre de la page principale
-    st.image("assets/images/logo.png", width=150)
     st.markdown('<h1 class="title">DATA DIGITAL ONE</h1>', unsafe_allow_html=True)
 
     # Sous-titre
@@ -46,8 +31,6 @@ def main():
                 <li><span class="icon">🔗</span>Connexion aux Données : Téléchargez un fichier CSV, Excel ou connectez-vous à une base de données.</li>
                 <li><span class="icon">📝</span>Description des Données : Obtenez un résumé et une vue d'ensemble de vos de données.</li>
                 <li><span class="icon">📈</span>Analyse des Données : Effectuez une analyse exploratoire des données.</li>
-                <li><span class="icon">🔄</span>Transformation des Données : Appliquez des transformations à vos données.</li>
-                <li><span class="icon">📊</span>Évaluation du Modèle : Évaluez des performances de modèles.</li>
                 <li><span class="icon">🏋️</span>Entraînement du Modèle : Entraînez vos modèles d'apprentissage automatique.</li>
                 <li><span class="icon">📊</span>Modélisation et Évaluation : Déterminer le nombre optimal de clusters avec l'analyse de la silhouette.</li>
                 <li><span class="icon">📉</span>Visualisation des Données : Visualisez les résultats de vos données.</li>
@@ -56,11 +39,27 @@ def main():
         </div>
     """, unsafe_allow_html=True)
 
-    # Fermer les conteneurs principaux
-    st.markdown("""
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+def main():
+    """
+    Fonction principale pour afficher l'application Streamlit avec une barre de navigation.
+    """
+    st.sidebar.title("Navigation")
+    selection = st.sidebar.radio("Choisissez une page", ["Accueil", "Visualisation des Données", "Conseils de Nettoyage", "Prévision"])
+
+    if selection == "Accueil":
+        show_homepage()
+    elif selection == "Visualisation des Données":
+        visualisation_donnees.main()
+    elif selection == "Conseils de Nettoyage":
+        suggestions.main()
+    elif selection == "Prévision":
+        prevision.main()
 
 if __name__ == "__main__":
+    if 'dataframe' not in st.session_state:
+        st.session_state['dataframe'] = None
+    if 'original_dataframe' not in st.session_state:
+        st.session_state['original_dataframe'] = None
+    if 'final_dataframe' not in st.session_state:
+        st.session_state['final_dataframe'] = None
     main()
