@@ -3,11 +3,9 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 import mysql.connector
 from pymongo import MongoClient
+import io
 
 def main():
-    """
-    Fonction principale pour la page de connexion aux données.
-    """
     st.title("Page de Connexion aux Données")
     st.write("Ceci est la page de connexion aux données.")
 
@@ -32,7 +30,6 @@ def main():
         db_type = st.selectbox("Sélectionner le Type de Base de Données", ["PostgreSQL", "MySQL", "MongoDB"])
 
         if db_type == "MySQL":
-            # Connexion à MySQL
             mysql_host = st.text_input("Hôte MySQL", "localhost")
             mysql_user = st.text_input("Utilisateur MySQL", "root")
             mysql_password = st.text_input("Mot de passe MySQL", type="password")
@@ -60,7 +57,6 @@ def main():
                     st.error(f"Erreur: {e}")
 
         elif db_type == "MongoDB":
-            # Connexion à MongoDB
             mongo_host = st.text_input("Hôte MongoDB", "localhost")
             mongo_port = st.text_input("Port MongoDB", "27017")
             mongo_dbname = st.text_input("Base de Données MongoDB")
@@ -75,7 +71,6 @@ def main():
                     st.error(f"Erreur: {e}")
 
             if st.session_state.get('connected'):
-                # Sélectionner une collection MongoDB
                 db = st.session_state['mongo_db']
                 collections = db.list_collection_names()
                 selected_collection = st.selectbox("Sélectionner la Collection", collections)
@@ -102,14 +97,13 @@ def main():
                     conn = engine.connect()
                     st.session_state['postgres_conn'] = conn
 
-                    # Charger les tables disponibles
                     result = conn.execute(
                         text("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"))
                     tables = [row[0] for row in result]
                     st.session_state['tables'] = tables
 
                     st.write("Connexion réussie et tables chargées.")
-                    st.write(f"Tables disponibles : {tables}")  # Afficher les tables disponibles pour débogage
+                    st.write(f"Tables disponibles : {tables}")
                 except Exception as e:
                     st.error(f"Erreur lors de la connexion PostgreSQL : {e}")
 
@@ -128,7 +122,6 @@ def main():
                             query = text(f'SELECT * FROM "{table}"')
                             dfs[table] = pd.read_sql(query, conn)
 
-                        # Sélection des colonnes pour chaque table
                         st.write("Sélectionner les colonnes pour chaque table :")
                         selected_columns = {}
                         for table, df in dfs.items():
@@ -136,12 +129,12 @@ def main():
                                                      default=df.columns.tolist())
                             selected_columns[table] = columns
 
-                        # Sélectionner les colonnes de fusion
-                        merge_key_table1 = st.selectbox(f"Clé de fusion dans {selected_tables[0]}", dfs[selected_tables[0]].columns.tolist())
-                        merge_key_table2 = st.selectbox(f"Clé de fusion dans {selected_tables[1]}", dfs[selected_tables[1]].columns.tolist())
+                        merge_key_table1 = st.selectbox(f"Clé de fusion dans {selected_tables[0]}",
+                                                        dfs[selected_tables[0]].columns.tolist())
+                        merge_key_table2 = st.selectbox(f"Clé de fusion dans {selected_tables[1]}",
+                                                        dfs[selected_tables[1]].columns.tolist())
 
                         if merge_key_table1 and merge_key_table2:
-                            # Fusionner les tables
                             merged_df = pd.merge(
                                 dfs[selected_tables[0]][selected_columns[selected_tables[0]]],
                                 dfs[selected_tables[1]][selected_columns[selected_tables[1]]],
@@ -152,7 +145,6 @@ def main():
                             st.session_state['dataframe'] = merged_df
                             st.session_state['original_dataframe'] = merged_df.copy()
 
-                            # Sélectionner les colonnes de la table fusionnée
                             st.write("Sélectionner les colonnes pour la table fusionnée :")
                             all_columns = merged_df.columns.tolist()
                             selected_merge_columns = st.multiselect("Colonnes de la table fusionnée", all_columns,
@@ -165,9 +157,30 @@ def main():
                             else:
                                 st.write("Veuillez sélectionner au moins une colonne.")
                             st.write("Table fusionnée:")
-                            st.dataframe(final_df)  # Afficher la table fusionnée pour vérifier
+                            st.dataframe(final_df)
+
+                            # Ajouter un bouton de téléchargement pour le DataFrame fusionné
+                            csv = final_df.to_csv(index=False).encode('utf-8')
+
+                            # Boutons de téléchargement
+                            st.download_button(
+                                label="Télécharger le tableau nettoyé en CSV",
+                                data=csv,
+                                file_name='merged_data.csv',
+                                mime='text/csv'
+                            )
+
+                            towrite = io.BytesIO()
+                            final_df.to_excel(towrite, index=False, engine='xlsxwriter')
+                            towrite.seek(0)
+                            st.download_button(
+                                label="Télécharger le tableau nettoyé en Excel",
+                                data=towrite,
+                                file_name='merged_data.xlsx',
+                                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                            )
                         else:
-                            st.error(f"Veuillez sélectionner les colonnes de fusion dans les deux tables.")
+                            st.error("Veuillez sélectionner les colonnes de fusion dans les deux tables.")
                     except Exception as e:
                         st.error(f"Erreur lors de la lecture des tables ou de la fusion : {e}")
             else:
